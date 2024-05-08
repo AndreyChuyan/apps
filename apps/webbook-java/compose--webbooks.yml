@@ -1,0 +1,19 @@
+version: "3.3"
+
+services:
+  # Имя контейнера для webboks
+  webbooks-JDK:
+    image: "ghcr.io/andreychuyan/app-webbooks:latest"
+    container_name: "app-webbooks-JDK"
+    # вывод на порт 8082
+    ports:
+      - "8082:8080"
+    # адрес базы данных
+    environment:
+      # - DB_URL=jdbc:postgresql://158.160.59.184:5432/db_webbooks
+      - DB_URL=jdbc:postgresql://app-webbooks-psql:5432/db_webbooks
+
+  # Имя контейнера для psql
+  app-webbooks-psql:
+    image: "ghcr.io/andreychuyan/app-webbooks-psql:latest"
+    container_name: "app-webbooks-psql"

@@ -1,0 +1,95 @@
+//функция печатающая то, что ей дали на вход
+def myFunc(arg) {
+    println (arg)
+}
+
+pipeline {
+    agent any
+
+    tools {
+        // Install the Maven version configured as "M3" and add it to the path.
+        maven "MAVEN_3.5.2"
+        jdk "JDK17"
+    }
+
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '3')) //число хранимых билдов
+        //? не работает timeout(time: 10, unit: 'MINUTES', type: 'ABORTED') //таймаут аварийного завершения задачи
+        timestamps()    //временные метки лога 
+        ansiColor('xterm')   //!!!дополнительно - установить плагин ansiColor
+    }
+
+    triggers {
+        cron('H */4 * * 1-5')   //тригеры запуска
+    }
+
+    // parameters {
+    //     string defaultValue: 'test string', description: 'введите строку', name: 'MY_STRING' //задаем дополнительные параметры и параметр по умолчанию
+    // }
+
+    environment { 
+        DB_URL = "jdbc:postgresql://158.160.59.184:5432/db_webbooks"
+    }
+
+//-----stages-
+    stages {        
+
+        stage('Print parametrs') {
+            steps {
+                echo "${params.MY_STRING}"  //вывод и применение заданных параметров
+                // echo "${DB_URL}"  //вывод и применение заданных параметров
+            }
+        }
+        
+        stage('Build') {
+            steps {
+                script {
+                    if (env.BRANCH_NAME == "main") {
+                        myFunc(params.MY_STRING) //выполнение ранее объявленной функции по условию
+                    }
+                
+                    // Get some code from a GitHub repository
+                    // git branch: 'main', credentialsId: 'github-http', poll: false, url: 'https://github.com/levelup-devops/2023-09-example.git'
+
+                    dir('apps/webbook-java') {
+                        // Run Maven on a Unix agent.
+                        // sh "mvn package -DskipTests"
+                        sh "mvn package"
+                    }
+                }
+            }
+            post {
+                // If Maven was able to run the tests, even if some of the test
+                // failed, record the test results and archive the jar file.
+                success {
+                    dir('apps/webbook-java') {
+                        junit '**/target/surefire-reports/TEST-*.xml'
+                    }
+                }
+            }
+        }
+
+        stage('Artifacts') {
+            // Выполнять только при изменении ветки main, не собирать при pull-request 
+            // when { expression { env.BRANCH_NAME == "main" } }
+
+            steps {
+                dir('apps/webbook-java') {
+                    // Run Maven on a Unix agent.
+                    archiveArtifacts 'target/*.jar'
+                }
+            }
+            post {
+            // Clean after build
+                always {
+                    cleanWs(cleanWhenNotBuilt: false,
+                        deleteDirs: true,
+                        disableDeferredWipeout: true,
+                        notFailBuild: true,
+                        patterns:   [[pattern: '.gitignore', type: 'INCLUDE'],
+                                    [pattern: '.propsfile', type: 'EXCLUDE']])
+                }
+            }
+        }
+    }
+}

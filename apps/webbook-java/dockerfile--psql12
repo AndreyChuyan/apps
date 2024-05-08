@@ -1,0 +1,13 @@
+# ---образ postgresql-12 для Webbooks
+# --------------------------
+# Указываем базовый образ
+FROM postgres
+# Устанавливаем переменную окружения для установки пароля для пользователя "postgres"
+ENV POSTGRES_PASSWORD=password
+# Определяем переменные для имени базы данных
+ENV POSTGRES_DB=db_webbooks
+# Копируем файл с данными в контейнер
+COPY /src/main/resources/data.sql /docker-entrypoint-initdb.d/
+# Открываем порт 5433 для внешних соединений
+# EXPOSE 5432
+EXPOSE 5432

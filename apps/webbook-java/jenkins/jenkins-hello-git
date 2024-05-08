@@ -1,0 +1,60 @@
+pipeline {
+    agent any
+
+    tools {
+        jdk 'JDK_8'
+        maven 'MAVEN_3.8.6'
+    }
+
+    environment { 
+        // DB_URL = "jdbc:postgresql://158.160.59.184:5432/db_webbooks"    //переменная для адреса и мени бд
+        GITHUB_REPO_CRED = credentials("18770cb2-d5f4-4e43-9e04-ef562bc35c3a")   //https://github.com/AndreyChuyan/DewOps.git
+        GITHUB_REPO_OWNER = "AndreyChuyan"
+	    GITHUB_REPO_NAME = "DewOps"
+        GITHUB_REPO_URL = "https://github.com/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}.git"
+    }
+
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '3')) //число хранимых билдов
+        //? не работает timeout(time: 10, unit: 'MINUTES', type: 'ABORTED') //таймаут аварийного завершения задачи
+        timestamps()    //временные метки лога 
+        ansiColor('xterm')   //!!!дополнительно - установить плагин ansiColor
+    }
+
+//-----stages-
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'main', changelog: false, credentialsId: '18770cb2-d5f4-4e43-9e04-ef562bc35c3a', poll: false, url: env.GITHUB_REPO_URL
+            }
+        }
+        
+        stage('Build') {
+            steps {
+                dir('apps/hello-world-app') {
+                    sh "mvn -B -DskipTests -Dmaven.repo.local=${WORKSPACE}/.m2/repository clean package"
+                }
+            }
+        }
+        
+        stage('Upload') {
+            steps {
+                dir('apps/hello-world-app') {
+                    sh "mvn -DskipTests -s settings.xml -Dmaven.repo.local=${WORKSPACE}/.m2/repository deploy"
+                }
+            }
+            post {
+                // Clean after build
+                always {
+                    cleanWs(cleanWhenNotBuilt: false,
+                        deleteDirs: true,
+                        disableDeferredWipeout: true,
+                        notFailBuild: true,
+                        patterns:   [[pattern: '.gitignore', type: 'INCLUDE'],
+                                    [pattern: '.propsfile', type: 'EXCLUDE']])
+                }
+            }            
+        }
+    }
+}
+             
