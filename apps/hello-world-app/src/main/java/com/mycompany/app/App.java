@@ -10,7 +10,7 @@ public class App {
     /**
     * Gets the distance between tw points.
     */
-    private final String message = "Hello World! Andrey + !!!!!";
+    private final String message = "Hello World! Lup! From GIT";
 
     /**
     * Gets the distance between tw points.
